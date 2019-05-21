@@ -7,7 +7,7 @@ struct map {
     struct map *next, *pre;
 } ;
 
-char* lmalloc(unsigned int size, struct map *&coremap,struct map* tail);
+char* lmalloc(unsigned int size, struct map *&coremap);
 void lfree(unsigned int size, char* addr, struct map* head,struct map* tail);
 void PrintMap(struct map* head,char* base_addr,struct map* tail);
 
@@ -41,14 +41,14 @@ int main(){
     while (true){
         scanf("%c",&command);
         switch(command){
-            case 'm':
+            case 'm': //进行内存分配
                 scanf("%d",&size);
-                addr = lmalloc(size,coremap,tail);
+                addr = lmalloc(size,coremap);
                 printf("\nmemory state:\n");
                 PrintMap(head, p, tail);
                 printf("\n");
                 break;
-            case 'f':
+            case 'f': //指定位置、大小内存释放
                 scanf("%d%d", &size, &relative_addr);
                 lfree(size, p+relative_addr, head, tail);
                 printf("\nmemory state:\n");
@@ -65,19 +65,21 @@ int main(){
     return 0;
 }
 
-char* lmalloc(unsigned int size, struct map *&coremap,struct map* tail){
+char* lmalloc(unsigned int size, struct map *&coremap){
+	//输入：请求空间大小size， 起始查找指针coremap
+	//输出：分配空间起始地址addr
     char *a;
     struct map *bp;
     bp = coremap;
     do{
-        if(bp->m_size >= size){
+        if(bp->m_size >= size){ //寻找大小大于请求空间的区块
             a = bp->m_addr;
             bp->m_addr += size;
-            if((bp->m_size -= size) == 0){ //该空闲区大小为零时，从链表中删除该节点 (未考虑空闲区在结尾的情况)
+            if((bp->m_size -= size) == 0){ //该空闲区大小为零时，从链表中删除该节点
                 bp->next->pre = bp->pre;
                 bp->pre->next = bp->next;          
             }
-            coremap = bp->next;
+            coremap = bp->next;//将被分配的区块的下一区块作为新的起始查找指针
             while(coremap->m_size == 0){ //coremap不能是头尾节点
                 coremap = coremap->next;
             }
@@ -90,12 +92,14 @@ char* lmalloc(unsigned int size, struct map *&coremap,struct map* tail){
 }
 
 void lfree(unsigned int size, char* addr, struct map* head,struct map* tail){
+	//输入：头指针head, 尾指针tail， 回收空间大小size， 回收空间地址addr
+	//实现内存回收并重整空闲存储区表
     struct map *bp;
     if(size == 0){
         printf("The memory size can not be zero !");
         return;
     }
-
+	//寻找恰位于释放位置之后的第一个空闲区块
     for(bp = head->next;((bp->m_addr <= addr) && (bp->next != tail)); bp = bp->next);
     if(bp->pre->m_addr + bp->pre->m_size == addr && bp->pre->m_size != 0){ //与前空闲区相连
         bp->pre->m_size += size;
@@ -129,6 +133,7 @@ void lfree(unsigned int size, char* addr, struct map* head,struct map* tail){
 }
 
 void PrintMap(struct map* head,char* base_addr,struct map* tail){
+	//输入：头指针head, 基地址base_addr, 尾指针tail
     //以相对地址的方式输出内存使用及空闲情况
     struct map* temp;
     if(head->next->m_addr > base_addr){
